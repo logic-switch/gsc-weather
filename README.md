@@ -8,7 +8,7 @@ live wind conditions for race committee.
 # Overview
 
 ```mermaid
-graph Overview;
+graph LR;
     Anemometer-->Arduino;
     MPL3115A2-->Arduino;
     Arduino-->RFM95W_LoRa_barge;
