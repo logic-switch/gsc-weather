@@ -13,8 +13,8 @@ graph LR;
     MPL3115A2-->Arduino;
     Arduino-->RFM95W_LoRa_barge;
     RFM95W_LoRa_barge-->RFM95W_LoRa_basestation;
-    RFM95W_LoRa_basestation -> raspberry_pi;
-    Raspberry_pi -> WeeWx;
+    RFM95W_LoRa_basestation-->Raspberry_pi;
+    Raspberry_pi-->WeeWx;
 ```
 
 # Setup
