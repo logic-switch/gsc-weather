@@ -12,6 +12,10 @@ class GSC_Data:
     # uint8 wind_direction * 2 (degrees)
     # uint8 crc8 (ccitt)
 
+    # Returns
+    #   Temperature in °C
+    #   Pressure in kPa
+
     def __init__(self, packet):
         if len(packet) < 4:
             raise ValueError('Packet too short')
@@ -25,9 +29,15 @@ class GSC_Data:
 
         packet = packet[4:]  # Strip the header off of the packet
 
-        self.temperature = self._convert_value(packet.pop(0),
-                                               packet.pop(0)) / 100
-        self.pressure = 0
+        self.temperature = 0
+        if len(packet) >= 2:
+            self.temperature = self._convert_value(packet.pop(0),
+                                                   packet.pop(0)) / 100
+
+        if len(packet) >= 2:
+            self.pressure = (self._convert_value_unsigned(
+                packet.pop(0),
+                packet.pop(0)) + 80000) / 1000
 
     def __repr__(self):
         return str(self.__dict__)
@@ -38,4 +48,9 @@ class GSC_Data:
         # Check for sign bit and turn into a negative value if set.
         if value & 0x8000 != 0:
             value -= 1 << 16
+        return float(value)
+
+    def _convert_value_unsigned(self, high, low):
+        # Convert to 16-bit signed value.
+        value = ((high & 0xFF) << 8) | (low & 0xFF)
         return float(value)

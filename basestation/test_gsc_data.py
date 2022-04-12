@@ -1,7 +1,6 @@
 import unittest
 import gsc_data
 
-
 class Test(unittest.TestCase):
     def test_too_short(self):
         """
@@ -85,6 +84,35 @@ class Test(unittest.TestCase):
 
         self.assertEqual(data.temperature, -45.89)
 
+    def test_pressure_under_16_bits(self):
+        """
+        Get pressure from int
+        """
+        packet = bytearray(b'0GSC0000')
+        packet[0] = 8
+        pressure = 20100
+        pressure_bytes = pressure.to_bytes(2, 'big')
+        packet[6] = pressure_bytes[0]
+        packet[7] = pressure_bytes[1]
+
+        data = gsc_data.GSC_Data(packet)
+
+        self.assertEqual(data.pressure, 100.1)
+
+    def test_pressure_16_bits(self):
+        """
+        Get pressure from int
+        """
+        packet = bytearray(b'0GSC0000')
+        packet[0] = 8
+        pressure = 60120
+        pressure_bytes = pressure.to_bytes(2, 'big')
+        packet[6] = pressure_bytes[0]
+        packet[7] = pressure_bytes[1]
+
+        data = gsc_data.GSC_Data(packet)
+
+        self.assertEqual(data.pressure, 140.12)
 
 if __name__ == '__main__':
     unittest.main()

@@ -54,7 +54,7 @@ void loop() {
   short temperature_int = (short)(temperature * 100);
 
   if (millis() - lastSendTime > send_interval) {
-    Serial.print("pressure = "); Serial.print(pressure); Serial.println(" kPa");
+    Serial.print("pressure = "); Serial.print(pressure); Serial.println(" hPa");
     Serial.print("pressure = "); Serial.print(pressure_int); Serial.println(" Pa");
     Serial.print("temperature = "); Serial.print(temperature); Serial.println(" C");
     Serial.print("temperature = "); Serial.print(temperature_int); Serial.println(" c°C");
