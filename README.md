@@ -2,7 +2,7 @@
 
 [Glenmore Sailing Club](https://www.glenmoresailingclub.com/) Weather Monitor
 
-Providing general weather for sailors, high wind cutoff for GSC coop boats and
+Providing general weather for sailors, high wind cutoff for GSC co-op boats and
 live wind conditions for race committee.
 
 # Overview
@@ -17,36 +17,42 @@ graph LR;
     Raspberry_pi-->WeeWx;
 ```
 
-# Setup
+# Arduino
 
-## Arduino
+## Wiring
 
-### Wiring
-
-### Libraries
+## Libraries
 
 Libraries that need to be downloaded using Library Manager (Tools -> Manage Libraries)
 * CRC - https://www.arduino.cc/reference/en/libraries/crc/
 * LoRa - https://www.arduino.cc/reference/en/libraries/lora/
 * MPL3115A2 - https://www.arduino.cc/reference/en/libraries/adafruit-mpl3115a2-library/
 
-## Raspberry Pi
+# Raspberry Pi
 
-### Wiring
+## Wiring
 
-### Ramdisk setup
+## Ramdisk setup
 ```
 pi@raspberrypi:~ $ sudo mkdir /var/ramdisk
 pi@raspberrypi:~ $ echo "tmpfs /var/ramdisk tmpfs nodev,nosuid,size=128k 0 0" | sudo tee -a /etc/fstab
 ```
 
-### Python
+## Python
+
+### Install Python Libraries
 ```
 pip install crc
+```
+
+### Running unit tests
+```
+~/gsc-weather $ cd basestation
+~/gsc-weather/basestation $ python3 -m unittest *
 ```
 
 # Credit
 
 [Adafruit](https://www.adafruit.com) for great products and tutorials
 
-WeeXx [examples](https://github.com/weewx/weewx/wiki/i2C-sensor-and-other-python-scripts)
+WeeXx [pi weather station](https://github.com/weewx/weewx/wiki/Raspberry-Pi-weather-station-with-i2C-sensors), [sensors and scripts](https://github.com/weewx/weewx/wiki/i2C-sensor-and-other-python-scripts)
