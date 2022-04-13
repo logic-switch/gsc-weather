@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 # Import Python System Libraries
-import time
+from time import strftime, localtime, sleep
 # Import Blinka Libraries
 import busio
 from digitalio import DigitalInOut, Direction, Pull
@@ -25,6 +25,19 @@ def verify_checksum(crc_calculator, packet):
         print('{} != {}'.format(checksum, packet[-1]))
         return False
 
+
+def write_data_to_file(data):
+
+    datetime = strftime("%Y-%m-%d %H:%M:%S", localtime())
+
+    data_list = []
+    data_list.append(datetime)
+    data_list.append(data.temperature)
+    data_list.append(data.pressure)
+
+    with open('/var/ramdisk/wxdata.csv', 'a') as file:
+        file.write(','.join(map(str,data_list)))
+        file.write('\n')
 
 if __name__ == '__main__':
     # Configure LoRa Radio
@@ -51,6 +64,7 @@ if __name__ == '__main__':
 
         if not verify_checksum(crc_calculator, packet):
             # Ignore invalid packets
+            print(packet)
             continue
 
         try:
@@ -60,6 +74,8 @@ if __name__ == '__main__':
             data = None
 
         if data is not None:
+            print(packet)
             print(data)
+            write_data_to_file(data)
 
-        time.sleep(0.1)
+        sleep(1)
