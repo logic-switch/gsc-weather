@@ -1,0 +1,10 @@
+[Unit]
+Description=gsc_weather receive data using LoRa radio
+
+[Service]
+Type=idle
+WorkingDirectory=/home/dlaing/gsc_weather/basestation/
+ExecStart=/usr/bin/python3 /home/dlaing/gsc_weather/basestation/gsc_weather_receive.py
+
+[Install]
+WantedBy=multi-user.target
