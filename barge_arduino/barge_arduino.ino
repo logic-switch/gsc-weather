@@ -3,6 +3,7 @@
 #include <CRC8.h>
 #include <CRC.h>
 #include <Adafruit_MPL3115A2.h>
+#include <Ewma.h>
 
 
 const int csPin = 10;         // LoRa radio chip select
@@ -12,9 +13,16 @@ const int irqPin = 2;         // change for your board; must be a hardware inter
 CRC8 crc;
 Adafruit_MPL3115A2 baro;
 
-long lastSendTime = 0;        // last send time
-int send_interval = 5000;    // interval between sends
+const long read_interval = 5000;    // interval between sends (ms)
+const long send_interval = 60010;    // interval between sends (ms)
 // Change to 301681 milliseconds (Just over than 5 minutes. An odd number to reduce the chance of repeated collisions)
+
+long lastReadTime = -1 * read_interval;        // last time data was measured
+long lastSendTime = -1 * send_interval;        // last time data was sent
+
+const float filterAlpha = 0.1;     // Smaller is more smoothing
+Ewma pressureFilter(filterAlpha);
+Ewma temperatureFilter(filterAlpha);
 
 void setup() {
   Serial.begin(57600);                   // initialize serial
@@ -32,6 +40,14 @@ void setup() {
 
   Serial.println("LoRa init succeeded.");
 
+  Serial.print("Filter alpha: "); Serial.println(filterAlpha);
+  Serial.print("Interval: "); Serial.print(read_interval); Serial.print(" : "); Serial.println(send_interval);
+
+  if (filterAlpha >= 1 && filterAlpha <= 0) {
+    Serial.println("Alpha for Ewma must be between zero and 1 not inclusive");
+    while(1);
+  }
+
   if (!baro.begin()) {
     Serial.println("Could not find sensor. Check wiring.");
     while(1);
@@ -43,25 +59,40 @@ void setup() {
 }
 
 void loop() {
-  if (millis() < lastSendTime) {
+  long currentTime = millis();
+  if (currentTime < lastSendTime) {
     // Avoid clock overflow
-    lastSendTime = millis() - send_interval - 1;
+    lastSendTime = currentTime - send_interval - 1;
+  }
+  if (currentTime < lastReadTime) {
+    // Avoid clock overflow
+    lastReadTime = currentTime - read_interval - 1;
   }
 
-  float pressure = baro.getPressure();
-  unsigned short pressure_int = (unsigned short)((pressure - 80000) * 1000);
-  float temperature = baro.getTemperature();
-  short temperature_int = (short)(temperature * 100);
+  if (currentTime - lastReadTime > read_interval) {
+    float rawTemperature = baro.getTemperature();
+    float temperature = temperatureFilter.filter(rawTemperature);
+    Serial.print("temperature = "); Serial.print(temperature); Serial.print(" raw: "); Serial.print(rawTemperature);  Serial.println(" C");
 
-  if (millis() - lastSendTime > send_interval) {
-    Serial.print("pressure = "); Serial.print(pressure); Serial.println(" hPa");
-    Serial.print("pressure = "); Serial.print(pressure_int); Serial.println(" Pa");
+
+    float pressure = pressureFilter.filter(baro.getPressure());
+    //float temperature = temperatureFilter.filter(baro.getTemperature());
+
+    //Serial.print("pressure = "); Serial.print(pressure); Serial.println(" hPa");
     Serial.print("temperature = "); Serial.print(temperature); Serial.println(" C");
-    Serial.print("temperature = "); Serial.print(temperature_int); Serial.println(" c°C");
 
+    lastReadTime = millis();
+  }
+
+  if (currentTime - lastSendTime > send_interval) {
+    unsigned short pressure_int = (unsigned short)((pressureFilter.output - 80000) * 1000);
+    short temperature_int = (short)(temperatureFilter.output * 100);
+
+    Serial.print("pressure = "); Serial.print(pressure_int); Serial.println(" Pa");
+    Serial.print("temperature = "); Serial.print(temperature_int); Serial.println(" c°C");
     sendGSCData(temperature_int, pressure_int);
 
-    lastSendTime = millis();            // timestamp the message
+    lastSendTime = millis();
   }
 
   delay(250);
