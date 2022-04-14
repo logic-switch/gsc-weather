@@ -85,10 +85,10 @@ void loop() {
   }
 
   if (currentTime - lastSendTime > send_interval) {
-    unsigned short pressure_int = (unsigned short)((pressureFilter.output - 80000) * 1000);
+    unsigned short pressure_int = (unsigned short)((pressureFilter.output - 800) * 100);
     short temperature_int = (short)(temperatureFilter.output * 100);
 
-    Serial.print("pressure = "); Serial.print(pressure_int); Serial.println(" Pa");
+    Serial.print("pressure = "); Serial.print(pressureFilter.output); Serial.print("hPa, "); Serial.print(pressure_int); Serial.println(" Pa");
     Serial.print("temperature = "); Serial.print(temperature_int); Serial.println(" c°C");
     sendGSCData(temperature_int, pressure_int);
 
