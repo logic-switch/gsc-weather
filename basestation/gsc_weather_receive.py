@@ -26,7 +26,21 @@ def verify_checksum(crc_calculator, packet):
         return False
 
 
-def write_data_to_file(data):
+def write_packet_to_file(error, packet, rfm9x):
+
+    datetime = strftime("%Y-%m-%d %H:%M:%S", localtime())
+    data_list = []
+    data_list.append(datetime)
+    data_list.append(error)
+    data_list.append(packet)
+    data_list.append(rfm9x.last_rssi)
+    data_list.append(rfm9x.last_snr)
+
+    with open('/var/ramdisk/wxdata.csv', 'a') as file:
+        file.write(','.join(map(str,data_list)))
+        file.write('\n')
+
+def write_data_to_file(data, rfm9x):
 
     datetime = strftime("%Y-%m-%d %H:%M:%S", localtime())
 
@@ -35,6 +49,13 @@ def write_data_to_file(data):
     data_list.append(data.temperature)
     data_list.append(data.pressure)
 
+    data_list.append(rfm9x.last_rssi)
+    data_list.append(rfm9x.last_snr)
+
+    # Open file
+    # If file > 250KB
+    #   remove every other line from the file
+    # Continue with writing new data
     with open('/var/ramdisk/wxdata.csv', 'a') as file:
         file.write(','.join(map(str,data_list)))
         file.write('\n')
@@ -44,9 +65,14 @@ if __name__ == '__main__':
     CS = DigitalInOut(board.D25)  # Pin 22
     RESET = DigitalInOut(board.D17)  # Pin 11
     spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
+    while not spi.try_lock():
+        pass
+    spi.configure(baudrate=1000000)
+    spi.unlock()
     rfm9x = adafruit_rfm9x.RFM9x(spi, CS, RESET, 915.0)
-    rfm9x.tx_power = 23
-    prev_packet = None
+
+    #rfm9x.spreading_factor = 11
+
     print('- Waiting for PKT -')
 
     use_table = True
@@ -64,18 +90,19 @@ if __name__ == '__main__':
 
         if not verify_checksum(crc_calculator, packet):
             # Ignore invalid packets
-            print(packet)
+            print(f'crc: {packet}, {rfm9x.last_rssi}, {rfm9x.last_snr}')
+            write_packet_to_file('crc', packet, rfm9x)
             continue
 
         try:
             data = gsc_data.GSC_Data(packet[:-1])
         except ValueError as ve:
-            print(ve)
+            write_packet_to_file(ve, packet, rfm9x)
+            print(f'{ve}: {packet}, {rfm9x.last_rssi}, {rfm9x.last_snr}')
             data = None
 
         if data is not None:
-            print(packet)
-            print(data)
-            write_data_to_file(data)
+            print(f'{packet}, {data}, {rfm9x.last_rssi}, {rfm9x.last_snr}')
+            write_data_to_file(data, rfm9x)
 
         sleep(1)

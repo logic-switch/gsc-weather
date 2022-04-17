@@ -27,6 +27,7 @@ Libraries that need to be downloaded using Library Manager (Tools -> Manage Libr
 * CRC - https://www.arduino.cc/reference/en/libraries/crc/
 * LoRa - https://www.arduino.cc/reference/en/libraries/lora/
 * MPL3115A2 - https://www.arduino.cc/reference/en/libraries/adafruit-mpl3115a2-library/
+* EWMA - https://www.arduino.cc/reference/en/libraries/ewma/
 
 # Raspberry Pi
 
@@ -35,14 +36,15 @@ Libraries that need to be downloaded using Library Manager (Tools -> Manage Libr
 ## Ramdisk setup
 ```
 pi@raspberrypi:~ $ sudo mkdir /var/ramdisk
-pi@raspberrypi:~ $ echo "tmpfs /var/ramdisk tmpfs nodev,nosuid,size=128k 0 0" | sudo tee -a /etc/fstab
+pi@raspberrypi:~ $ echo "tmpfs /var/ramdisk tmpfs nodev,nosuid,size=256k 0 0" | sudo tee -a /etc/fstab
 ```
 
 ## Python
 
 ### Install Python Libraries
 ```
-pip install crc
+python3 -m pip install crc
+python3 -m pip install adafruit-circuitpython-rfm9x
 ```
 
 ### Running unit tests

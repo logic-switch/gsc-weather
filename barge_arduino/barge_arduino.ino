@@ -13,8 +13,8 @@ const int irqPin = 2;         // change for your board; must be a hardware inter
 CRC8 crc;
 Adafruit_MPL3115A2 baro;
 
-const long read_interval = 5000;    // interval between sends (ms)
-const long send_interval = 60010;    // interval between sends (ms)
+const long read_interval = 1000;    // interval between sends (ms)
+const long send_interval = 5010;    // interval between sends (ms)
 // Change to 301681 milliseconds (Just over than 5 minutes. An odd number to reduce the chance of repeated collisions)
 
 long lastReadTime = -1 * read_interval;        // last time data was measured
@@ -32,11 +32,14 @@ void setup() {
 
   // override the default CS, reset, and IRQ pins (optional)
   LoRa.setPins(csPin, resetPin, irqPin);// set CS, reset, IRQ pin
+  LoRa.setSPIFrequency(1E6);
 
   if (!LoRa.begin(915E6)) {             // initialize ratio at 915 MHz
     Serial.println("LoRa init failed. Check your connections.");
     while (true);                       // if failed, do nothing
   }
+  //LoRa.setSpreadingFactor(11); // Larger spreading factors give more range, 6-12
+  //LoRa.setTxPower(20); // 2-20
 
   Serial.println("LoRa init succeeded.");
 
