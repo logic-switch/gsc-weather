@@ -38,8 +38,10 @@ void setup() {
     Serial.println("LoRa init failed. Check your connections.");
     while (true);                       // if failed, do nothing
   }
-  //LoRa.setSpreadingFactor(11); // Larger spreading factors give more range, 6-12
-  //LoRa.setTxPower(20); // 2-20
+
+  LoRa.setPreambleLength(16);
+  LoRa.setSpreadingFactor(12); // Larger spreading factors give more range, 6-12
+  LoRa.disableCrc();
 
   Serial.println("LoRa init succeeded.");
 
