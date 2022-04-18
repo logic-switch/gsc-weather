@@ -64,10 +64,12 @@ if __name__ == '__main__':
     CS = DigitalInOut(board.D25)  # Pin 22
     RESET = DigitalInOut(board.D17)  # Pin 11
     spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
+    RADIO_FREQ_MHZ = 906.2 # 902-928 MHz (centre frequency 915 MHz)
 
-    rfm9x = adafruit_rfm9x.RFM9x(spi, CS, RESET, 915.0,
+    rfm9x = adafruit_rfm9x.RFM9x(spi, CS, RESET, RADIO_FREQ_MHZ,
                                  preamble_length=16, baudrate=1000000, crc=False)
     rfm9x.spreading_factor = 12
+    rfm9x.signal_bandwidth = 62500
 
     # Section 4.1.1.6 - Set low datarate automatically based on BW and SF
     symbolDuration = 1000 / ( rfm9x.signal_bandwidth / (1 << rfm9x.spreading_factor) )
