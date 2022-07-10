@@ -164,8 +164,8 @@ void loop() {
     if (acc_y_max < acc_y) { acc_y_max = acc_y; }
     if (acc_z_max < acc_z) { acc_z_max = acc_z; }
 
-    Serial.print("A:  "); Serial.print(acc_x_max); Serial.print(",  ");
-    Serial.print(acc_y_max); Serial.print(",  "); Serial.print(acc_z_max); Serial.println(" mg");
+    //Serial.print("A:  "); Serial.print(acc_x_max); Serial.print(",  ");
+    //Serial.print(acc_y_max); Serial.print(",  "); Serial.print(acc_z_max); Serial.println(" mg");
   }
 
   unsigned long sendTimeInterval = currentTime - lastSendTime;
@@ -176,7 +176,7 @@ void loop() {
   if (sendTimeInterval > send_interval) {
     lastSendTime = millis();
 
-    sendGSCData(temperatureFilter.output, pressureFilter.output);
+    sendGSCData(temperatureFilter.output, pressureFilter.output, windFilter.output, max_gust);
 
     max_gust = 0;
     acc_x_max = acc_y_max = acc_z_max = 0;
@@ -195,9 +195,9 @@ void packSignedShort(char* buffer, short value) {
   buffer[1] = lowByte(value);
 }
 
-void sendGSCData(float temperature, float pressure) {
+void sendGSCData(float temperature, float pressure, float wind, float gust) {
   Serial.println("sendGSCData");
-  int packet_length = 4 + 4 + 1; // header, payload, crc
+  int packet_length = 4 + 8 + 1; // header, payload, crc
   char buffer[packet_length];
   memset(buffer, 1, packet_length);
   buffer[0] = packet_length - 1; // Length of of message minus crc
@@ -206,11 +206,19 @@ void sendGSCData(float temperature, float pressure) {
 
   short temperature_int = (short)(temperature * 100);
   Serial.print("temperature = "); Serial.print(temperature_int); Serial.println(" c°C");
-  packUnsignedShort(&buffer[4], temperature_int);
+  packSignedShort(&buffer[4], temperature_int);
 
   unsigned short pressure_offset_int = (unsigned short)(pressure - 80000);
-  packSignedShort(&buffer[6], pressure_offset_int);
+  packUnsignedShort(&buffer[6], pressure_offset_int);
   Serial.print("pressure = "); Serial.print(pressureFilter.output); Serial.print("Pa, "); Serial.println(pressure_offset_int);
+
+  unsigned short wind_int = (short)(wind * 100);
+  Serial.print("wind revs = "); Serial.print(wind_int); Serial.println(" ");
+  packUnsignedShort(&buffer[8], wind_int);
+
+  unsigned short gust_int = (short)(gust * 100);
+  Serial.print("gust revs = "); Serial.print(gust_int); Serial.println(" ");
+  packUnsignedShort(&buffer[10], gust_int);
 
   crc.restart();
   crc.add(buffer, packet_length-1);

@@ -34,10 +34,23 @@ class GSC_Data:
             self.temperature = self._convert_value(packet.pop(0),
                                                    packet.pop(0)) / 100
 
+        self.pressure = 0
         if len(packet) >= 2:
             self.pressure = (self._convert_value_unsigned(
                 packet.pop(0),
                 packet.pop(0)) + 80000) / 1000
+
+        self.wind = 0
+        if len(packet) >= 2:
+            self.wind = (self._convert_value_unsigned(
+                packet.pop(0),
+                packet.pop(0))) / 100
+
+        self.gust = 0
+        if len(packet) >= 2:
+            self.gust = (self._convert_value_unsigned(
+                packet.pop(0),
+                packet.pop(0))) / 100
 
     def __repr__(self):
         return str(self.__dict__)
@@ -51,6 +64,6 @@ class GSC_Data:
         return float(value)
 
     def _convert_value_unsigned(self, high, low):
-        # Convert to 16-bit signed value.
+        # Convert to 16-bit unsigned value.
         value = ((high & 0xFF) << 8) | (low & 0xFF)
         return float(value)
