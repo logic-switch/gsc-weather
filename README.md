@@ -26,8 +26,11 @@ graph LR;
 Libraries that need to be downloaded using Library Manager (Tools -> Manage Libraries)
 * CRC - https://www.arduino.cc/reference/en/libraries/crc/
 * LoRa - https://www.arduino.cc/reference/en/libraries/lora/
-* MPL3115A2 - https://www.arduino.cc/reference/en/libraries/adafruit-mpl3115a2-library/
 * EWMA - https://www.arduino.cc/reference/en/libraries/ewma/
+* BMP180
+   * https://github.com/adafruit/Adafruit_Sensor
+   * https://github.com/adafruit/Adafruit_BMP183_Unified_Library
+* Grove - IMU 9DOF - https://github.com/Seeed-Studio/Seeed_ICM20600_AK0991
 
 # Raspberry Pi
 
@@ -37,6 +40,12 @@ Libraries that need to be downloaded using Library Manager (Tools -> Manage Libr
 ```
 pi@raspberrypi:~ $ sudo mkdir /var/ramdisk
 pi@raspberrypi:~ $ echo "tmpfs /var/ramdisk tmpfs nodev,nosuid,size=256k 0 0" | sudo tee -a /etc/fstab
+```
+
+## SPI Setup
+```
+pi@raspberrypi:~ $ sudo raspi-config
+        -> Interfacing Options -> SPI -> yes -> Finish
 ```
 
 ## Python

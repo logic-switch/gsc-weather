@@ -1,28 +1,34 @@
-#include <SPI.h>              // include libraries
-#include <LoRa.h>
-#include <CRC8.h>
-#include <CRC.h>
-#include <Adafruit_MPL3115A2.h>
-#include <Ewma.h>
+#include <SPI.h>              // For LoRa radio
+#include <LoRa.h>             // For LoRa RFM95C
+#include <CRC8.h>             // For LoRa radio - TODO - See if this is necessary
+#include <CRC.h>              // For LoRa radio - TODO - See if this is necessary
+#include <Adafruit_Sensor.h>    // For the BMP180
+#include <Adafruit_BMP085_U.h>  // For the BMP180
+#include <Ewma.h>   // Sensor data smoothing - Exponentially Weighted Moving Average
+#include <limits.h> // For ULONG_MAX
 
-
-const int csPin = 10;         // LoRa radio chip select
-const int resetPin = 9;       // LoRa radio reset
-const int irqPin = 2;         // change for your board; must be a hardware interrupt pin
+const int lora_csPin = 10;         // LoRa radio chip select
+const int lora_resetPin = 9;       // LoRa radio reset
+const int lora_irqPin = 2;         // LoRa irq pin - must be a hardware interrupt pin
+const int wind_irqPin = 3;         // Wind sensor irq pin - must be a hardware interrupt pin
+volatile unsigned int wind_rotation_count = 0;
 
 CRC8 crc;
-Adafruit_MPL3115A2 baro;
+Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10077);
 
-const long read_interval = 1000;    // interval between sends (ms)
-const long send_interval = 5010;    // interval between sends (ms)
-// Change to 301681 milliseconds (Just over than 5 minutes. An odd number to reduce the chance of repeated collisions)
+const long read_interval = 5000;    // interval between reads (ms)
+const long send_interval = 120010;    // interval between sends (ms)
+// Suggest change to 301681 milliseconds (Just over than 5 minutes. An odd number to reduce the chance of repeated collisions)
 
-long lastReadTime = -1 * read_interval;        // last time data was measured
-long lastSendTime = -1 * send_interval;        // last time data was sent
+unsigned long lastReadTime = 0;        // last time data was measured
+unsigned long lastSendTime = 0;        // last time data was sent
 
-const float filterAlpha = 0.1;     // Smaller is more smoothing
+const float filterAlpha = 0.05;     // Smaller is more smoothing
 Ewma pressureFilter(filterAlpha);
 Ewma temperatureFilter(filterAlpha);
+Ewma windFilter(float(read_interval) / 25000);   // For 2 minute wind average at read_interval of 5s
+Ewma gustFilter(float(read_interval) / 8000);   // For 15 second gusts at read_interval of 5s
+float max_gust = 0;
 
 void setup() {
   Serial.begin(57600);                   // initialize serial
@@ -31,10 +37,8 @@ void setup() {
   Serial.println("GSC Barge Wind Sensor");
 
   // override the default CS, reset, and IRQ pins (optional)
-  LoRa.setPins(csPin, resetPin, irqPin);// set CS, reset, IRQ pin
+  LoRa.setPins(lora_csPin, lora_resetPin, lora_irqPin);// set CS, reset, IRQ pin
   LoRa.setSPIFrequency(1E6);
-  LoRa.setTxPower(20); // 2-20
-
 
   if (!LoRa.begin(906.2E6)) {             // initialize ratio at 915 MHz
     Serial.println("LoRa init failed. Check your connections.");
@@ -45,8 +49,7 @@ void setup() {
   LoRa.setSpreadingFactor(12); // Larger spreading factors give more range, 6-12
   LoRa.disableCrc();
   LoRa.setSignalBandwidth(62.5E3);
-
-
+  LoRa.setTxPower(20); // 2-20
 
   Serial.println("LoRa init succeeded.");
 
@@ -58,51 +61,79 @@ void setup() {
     while(1);
   }
 
-  if (!baro.begin()) {
-    Serial.println("Could not find sensor. Check wiring.");
+  crc.setPolynome(0x07);
+
+  if(!bmp.begin())
+  {
+    /* There was a problem detecting the BMP180 ... check your connections */
+    Serial.print("BMP180 not detected ... Check your wiring or I2C address!");
     while(1);
   }
-  baro.setSeaPressure(1013.26);
-  Serial.println("MPL3115A2 init succeeded.");
 
-  crc.setPolynome(0x07);
+  // Setup Wind Sensor
+  attachInterrupt(digitalPinToInterrupt(wind_irqPin), wind_rotation_count_irq, CHANGE);
+}
+
+void wind_rotation_count_irq() {
+  wind_rotation_count += 1;
 }
 
 void loop() {
-  long currentTime = millis();
-  if (currentTime < lastSendTime) {
-    // Avoid clock overflow
-    lastSendTime = currentTime - send_interval - 1;
-  }
+  unsigned long currentTime = millis();
+  unsigned long readTimeInterval = currentTime - lastReadTime;
   if (currentTime < lastReadTime) {
     // Avoid clock overflow
-    lastReadTime = currentTime - read_interval - 1;
+    readTimeInterval = ULONG_MAX - lastReadTime + currentTime;
   }
 
-  if (currentTime - lastReadTime > read_interval) {
-    float rawTemperature = baro.getTemperature();
-    float temperature = temperatureFilter.filter(rawTemperature);
-    Serial.print("temperature = "); Serial.print(temperature); Serial.print(" raw: "); Serial.print(rawTemperature);  Serial.println(" C");
-
-
-    float pressure = pressureFilter.filter(baro.getPressure());
-    //float temperature = temperatureFilter.filter(baro.getTemperature());
-
-    //Serial.print("pressure = "); Serial.print(pressure); Serial.println(" hPa");
-    Serial.print("temperature = "); Serial.print(temperature); Serial.println(" C");
-
+  if (readTimeInterval > read_interval) {
     lastReadTime = millis();
+
+    // Wind should be first to be closest to reading of the currentTime.
+    unsigned int wind_count = wind_rotation_count;
+    wind_rotation_count = 0;
+    float rps = float(wind_count) * 1000 / readTimeInterval;
+    float wind = windFilter.filter(rps);
+    float gust = gustFilter.filter(rps);
+    if (gust < wind) {
+      gust = wind;
+    }
+    if (max_gust < gust) {
+      max_gust = gust;
+    }
+    //Serial.print("  RPS  = "); Serial.print(rps); Serial.print("  Wind = "); Serial.print(wind);
+    //Serial.print("  Gust = "); Serial.print(gust); Serial.print("  Max = "); Serial.print(max_gust); Serial.println("");
+
+    float rawTemperature;
+    bmp.getTemperature(&rawTemperature);
+    float temperature = temperatureFilter.filter(rawTemperature);
+    //Serial.print("temperature = "); Serial.print(temperature); Serial.print(" raw: "); Serial.print(rawTemperature);  Serial.println(" C");
+
+    float rawPressure;
+    bmp.getPressure(&rawPressure);
+    float pressure = pressureFilter.filter(rawPressure);
+    //Serial.print("pressure = "); Serial.print(pressure); Serial.print(" raw: "); Serial.print(rawPressure);  Serial.println(" Pa");
+
+    //Serial.print("pressure = "); Serial.print(pressureFilter.output); Serial.println(" Pa");
+    //Serial.print("temperature = "); Serial.print(temperatureFilter.output); Serial.println(" C");
   }
 
-  if (currentTime - lastSendTime > send_interval) {
-    unsigned short pressure_int = (unsigned short)((pressureFilter.output - 800) * 100);
+  unsigned long sendTimeInterval = currentTime - lastSendTime;
+  if (currentTime < lastSendTime) {
+    // Avoid clock overflow
+    sendTimeInterval = ULONG_MAX - lastSendTime + currentTime;
+  }
+  if (sendTimeInterval > send_interval) {
+    lastSendTime = millis();
+
+    unsigned short pressure_offset_int = (unsigned short)((pressureFilter.output - 80000));
     short temperature_int = (short)(temperatureFilter.output * 100);
 
-    Serial.print("pressure = "); Serial.print(pressureFilter.output); Serial.print("hPa, "); Serial.print(pressure_int); Serial.println(" Pa");
+    Serial.print("pressure = "); Serial.print(pressureFilter.output); Serial.print("Pa, "); Serial.println(pressure_offset_int);
     Serial.print("temperature = "); Serial.print(temperature_int); Serial.println(" c°C");
-    sendGSCData(temperature_int, pressure_int);
+    sendGSCData(temperature_int, pressure_offset_int);
 
-    lastSendTime = millis();
+    max_gust = 0;
   }
 
   delay(250);
@@ -118,7 +149,7 @@ void packSignedShort(char* buffer, short value) {
   buffer[1] = lowByte(value);
 }
 
-void sendGSCData(short temperature, unsigned short pressure) {
+void sendGSCData(short s1, unsigned short s2) {
   Serial.println("sendGSCData");
   int packet_length = 4 + 4 + 1; // header, payload, crc
   char buffer[packet_length];
@@ -126,8 +157,8 @@ void sendGSCData(short temperature, unsigned short pressure) {
   buffer[0] = packet_length - 1; // Length of of message minus crc
   String header = "GSC ";
   header.toCharArray(&(buffer[1]), header.length());
-  packSignedShort(&buffer[4], temperature);
-  packUnsignedShort(&buffer[6], pressure);
+  packSignedShort(&buffer[4], s1);
+  packUnsignedShort(&buffer[6], s2);
 
 
   crc.restart();
