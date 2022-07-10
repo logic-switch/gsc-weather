@@ -35,11 +35,15 @@ float max_gust = 0;
 
 AK09918 ak09918;
 AK09918_err_type_t err;
-int32_t x, y, z;
 // Lab tested: Min_X: -59, Max_X: 61, Min_Y: -91, Max_Y: 38, Min_Z: -93, Max_Z: 35
 int32_t offset_x = 1;
 int32_t offset_y = -26;
 int32_t offset_z = -29;
+
+ICM20600 icm20600(true);
+int16_t acc_x_max = 0;
+int16_t acc_y_max = 0;
+int16_t acc_z_max = 0;
 
 void setup() {
   Serial.begin(9600);                   // initialize serial
@@ -91,9 +95,11 @@ void setup() {
       delay(100);
       err = ak09918.isDataReady();
   }
-
   // Calibrated at lab bench. May need to be revisited.
   //calibrate(30000, &offset_x, &offset_y, &offset_z);
+
+  // Setup accelerometer and gyro
+  icm20600.initialize();
 
   // Setup Wind Sensor
   attachInterrupt(digitalPinToInterrupt(wind_irqPin), wind_rotation_count_irq, CHANGE);
@@ -144,18 +150,24 @@ void loop() {
     //Serial.print("pressure = "); Serial.print(pressureFilter.output); Serial.println(" Pa");
     //Serial.print("temperature = "); Serial.print(temperatureFilter.output); Serial.println(" C");
 
+    int32_t x, y, z;
     ak09918.getData(&x, &y, &z);
     x = x - offset_x;
     y = y - offset_y;
     z = z - offset_z;
+    //Serial.print("M:  "); Serial.print(x);  Serial.print(",  ");
+    //Serial.print(y);  Serial.print(",  "); Serial.print(z);  Serial.println(" uT");
 
-    Serial.print("M:  ");
-    Serial.print(x);
-    Serial.print(",  ");
-    Serial.print(y);
-    Serial.print(",  ");
-    Serial.print(z);
-    Serial.println(" uT");
+    // get acceleration
+    int16_t acc_x = abs(icm20600.getAccelerationX());
+    int16_t acc_y = abs(icm20600.getAccelerationY());
+    int16_t acc_z = abs(icm20600.getAccelerationZ());
+    if (acc_x_max < acc_x) { acc_x_max = acc_x; }
+    if (acc_y_max < acc_y) { acc_y_max = acc_y; }
+    if (acc_z_max < acc_z) { acc_z_max = acc_z; }
+
+    Serial.print("A:  "); Serial.print(acc_x_max); Serial.print(",  ");
+    Serial.print(acc_y_max); Serial.print(",  "); Serial.print(acc_z_max); Serial.println(" mg");
   }
 
   unsigned long sendTimeInterval = currentTime - lastSendTime;
@@ -174,6 +186,7 @@ void loop() {
     sendGSCData(temperature_int, pressure_offset_int);
 
     max_gust = 0;
+    acc_x_max = acc_y_max = acc_z_max = 0;
   }
 
   delay(250);
@@ -219,6 +232,7 @@ void calibrate(uint32_t timeout, int32_t* offsetx, int32_t* offsety, int32_t* of
     int32_t value_z_max = 0;
     uint32_t timeStart = 0;
 
+    int32_t x, y, z;
     ak09918.getData(&x, &y, &z);
 
     value_x_min = x;
