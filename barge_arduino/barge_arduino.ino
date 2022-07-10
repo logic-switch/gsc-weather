@@ -20,7 +20,7 @@ CRC8 crc;
 Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10077);
 
 const long read_interval = 5000;    // interval between reads (ms)
-const long send_interval = 120010;    // interval between sends (ms)
+const long send_interval = 10010;    // interval between sends (ms)
 // Suggest change to 301681 milliseconds (Just over than 5 minutes. An odd number to reduce the chance of repeated collisions)
 
 unsigned long lastReadTime = 0;        // last time data was measured
@@ -178,12 +178,7 @@ void loop() {
   if (sendTimeInterval > send_interval) {
     lastSendTime = millis();
 
-    unsigned short pressure_offset_int = (unsigned short)((pressureFilter.output - 80000));
-    short temperature_int = (short)(temperatureFilter.output * 100);
-
-    Serial.print("pressure = "); Serial.print(pressureFilter.output); Serial.print("Pa, "); Serial.println(pressure_offset_int);
-    Serial.print("temperature = "); Serial.print(temperature_int); Serial.println(" c°C");
-    sendGSCData(temperature_int, pressure_offset_int);
+    sendGSCData(temperatureFilter.output, pressureFilter.output);
 
     max_gust = 0;
     acc_x_max = acc_y_max = acc_z_max = 0;
@@ -202,7 +197,7 @@ void packSignedShort(char* buffer, short value) {
   buffer[1] = lowByte(value);
 }
 
-void sendGSCData(short s1, unsigned short s2) {
+void sendGSCData(float temperature, float pressure) {
   Serial.println("sendGSCData");
   int packet_length = 4 + 4 + 1; // header, payload, crc
   char buffer[packet_length];
@@ -210,9 +205,14 @@ void sendGSCData(short s1, unsigned short s2) {
   buffer[0] = packet_length - 1; // Length of of message minus crc
   String header = "GSC ";
   header.toCharArray(&(buffer[1]), header.length());
-  packSignedShort(&buffer[4], s1);
-  packUnsignedShort(&buffer[6], s2);
 
+  short temperature_int = (short)(temperature * 100);
+  Serial.print("temperature = "); Serial.print(temperature_int); Serial.println(" c°C");
+  packUnsignedShort(&buffer[4], temperature_int);
+
+  unsigned short pressure_offset_int = (unsigned short)(pressure - 80000);
+  packSignedShort(&buffer[6], pressure_offset_int);
+  Serial.print("pressure = "); Serial.print(pressureFilter.output); Serial.print("Pa, "); Serial.println(pressure_offset_int);
 
   crc.restart();
   crc.add(buffer, packet_length-1);
