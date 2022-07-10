@@ -60,10 +60,8 @@ void setup() {
     while (true);                       // if failed, do nothing
   }
 
-  LoRa.setPreambleLength(16);
   LoRa.setSpreadingFactor(12); // Larger spreading factors give more range, 6-12
   LoRa.disableCrc();
-  LoRa.setSignalBandwidth(62.5E3);
   LoRa.setTxPower(20); // 2-20
 
   Serial.println("LoRa init succeeded.");
