@@ -41,9 +41,9 @@ int32_t offset_y = -26;
 int32_t offset_z = -29;
 
 ICM20600 icm20600(true);
-int16_t acc_x_max = 0;
-int16_t acc_y_max = 0;
-int16_t acc_z_max = 0;
+uint16_t acc_x_max = 0;
+uint16_t acc_y_max = 0;
+uint16_t acc_z_max = 0;
 
 void setup() {
   Serial.begin(9600);                   // initialize serial
@@ -157,9 +157,9 @@ void loop() {
     //Serial.print(y);  Serial.print(",  "); Serial.print(z);  Serial.println(" uT");
 
     // get acceleration
-    int16_t acc_x = abs(icm20600.getAccelerationX());
-    int16_t acc_y = abs(icm20600.getAccelerationY());
-    int16_t acc_z = abs(icm20600.getAccelerationZ());
+    uint16_t acc_x = abs(icm20600.getAccelerationX());
+    uint16_t acc_y = abs(icm20600.getAccelerationY());
+    uint16_t acc_z = abs(icm20600.getAccelerationZ());
     if (acc_x_max < acc_x) { acc_x_max = acc_x; }
     if (acc_y_max < acc_y) { acc_y_max = acc_y; }
     if (acc_z_max < acc_z) { acc_z_max = acc_z; }
@@ -176,7 +176,16 @@ void loop() {
   if (sendTimeInterval > send_interval) {
     lastSendTime = millis();
 
-    sendGSCData(temperatureFilter.output, pressureFilter.output, windFilter.output, max_gust, x);
+    sendGSCData(temperatureFilter.output,
+        pressureFilter.output,
+        windFilter.output,
+        max_gust,
+        (int16_t)x,
+        (int16_t)y,
+        (int16_t)z,
+        acc_x_max,
+        acc_y_max,
+        acc_z_max);
 
     max_gust = 0;
     acc_x_max = acc_y_max = acc_z_max = 0;
@@ -195,9 +204,18 @@ void packSignedShort(char* buffer, int16_t value) {
   buffer[1] = lowByte(value);
 }
 
-void sendGSCData(float temperature, float pressure, float wind, float gust, int32_t) {
+void sendGSCData(float temperature,
+                 float pressure,
+                 float wind,
+                 float gust,
+                 int16_t x,
+                 int16_t y,
+                 int16_t z,
+                 uint16_t acc_x,
+                 uint16_t acc_y,
+                 uint16_t acc_z) {
   Serial.println("sendGSCData");
-  int16_t packet_length = 4 + 8 + 1; // header, payload, crc
+  int16_t packet_length = 4 + 20 + 1; // header, payload, crc
   char buffer[packet_length];
   memset(buffer, 1, packet_length);
   buffer[0] = packet_length - 1; // Length of of message minus crc
@@ -220,16 +238,20 @@ void sendGSCData(float temperature, float pressure, float wind, float gust, int3
   Serial.print("gust revs = "); Serial.print(gust_int); Serial.println(" ");
   packUnsignedShort(&buffer[10], gust_int);
 
-  uint16_t  x_int = (uint16_t)(gust * 100);
-  Serial.print("gust revs = "); Serial.print(gust_int); Serial.println(" ");
-  packUnsignedShort(&buffer[10], gust_int);
+  Serial.print("Compass X = "); Serial.print(x); Serial.println(" ");
+  packSignedShort(&buffer[12], x);
+  packSignedShort(&buffer[14], y);
+  packSignedShort(&buffer[16], z);
+  packUnsignedShort(&buffer[18], acc_x);
+  packUnsignedShort(&buffer[20], acc_y);
+  packUnsignedShort(&buffer[22], acc_z);
 
   crc.restart();
   crc.add(buffer, packet_length-1);
   buffer[packet_length-1] = crc.getCRC();
 
   LoRa.beginPacket();                   // start packet
-  LoRa.write(buffer, packet_length); // add payload
+  LoRa.write(buffer, packet_length);    // add payload
   LoRa.endPacket();                     // finish packet and send it
 }
 

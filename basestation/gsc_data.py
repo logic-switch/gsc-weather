@@ -52,6 +52,22 @@ class GSC_Data:
                 packet.pop(0),
                 packet.pop(0))) / 100
 
+        # Compass data
+        if len(packet) >= 2:
+            self.x = (self._convert_value(packet.pop(0), packet.pop(0)))
+        if len(packet) >= 2:
+            self.y = (self._convert_value(packet.pop(0), packet.pop(0)))
+        if len(packet) >= 2:
+            self.z = (self._convert_value(packet.pop(0), packet.pop(0)))
+
+        # Acceleration data
+        if len(packet) >= 2:
+            self.acc_x = (self._convert_value_unsigned(packet.pop(0), packet.pop(0)))
+        if len(packet) >= 2:
+            self.acc_y = (self._convert_value_unsigned(packet.pop(0), packet.pop(0)))
+        if len(packet) >= 2:
+            self.acc_z = (self._convert_value_unsigned(packet.pop(0), packet.pop(0)))
+
     def __repr__(self):
         return str(self.__dict__)
 
