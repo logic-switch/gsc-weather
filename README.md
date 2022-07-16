@@ -10,7 +10,9 @@ live wind conditions for race committee.
 ```mermaid
 graph LR;
     Anemometer-->Arduino;
-    MPL3115A2-->Arduino;
+    AK09918-->Arduino;
+    BMP180-->Arduino;
+    ICM20600-->Arduino;
     Arduino-->RFM95W_LoRa_barge;
     RFM95W_LoRa_barge-->RFM95W_LoRa_basestation;
     RFM95W_LoRa_basestation-->Raspberry_pi;
@@ -20,6 +22,15 @@ graph LR;
 # Arduino
 
 ## Wiring
+
+Atmega32u4 - Adafruit Feather 32u4
+
+* Anemometer - 6P4C (RJ11 phone) connector
+    1. black - GND
+    2. red - 3V
+    3. green - PCINT8 (A0)
+    4. yellow - unused
+* I2C sensors - VCC, GND, SDA (2), SCL(3)
 
 ## Libraries
 
