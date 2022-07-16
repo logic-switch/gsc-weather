@@ -6,15 +6,13 @@
 #include <Adafruit_BMP085_U.h>  // For the BMP180
 #include <Ewma.h>   // Sensor data smoothing - Exponentially Weighted Moving Average
 #include <limits.h> // For ULONG_MAX
+#include <YetAnotherPcInt.h>  // Easy use of PcInt
 
 #include "AK09918.h"
 #include "ICM20600.h"
 
 const int16_t lora_csPin = 10;         // LoRa radio chip select
 const int16_t lora_resetPin = 9;       // LoRa radio reset
-const int16_t lora_irqPin = 2;         // LoRa irq pin - must be a hardware interrupt pin
-const int16_t wind_irqPin = 3;         // Wind sensor irq pin - must be a hardware interrupt pin
-volatile uint16_t  wind_rotation_count = 0;
 
 CRC8 crc;
 Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10077);
@@ -32,6 +30,8 @@ Ewma temperatureFilter(filterAlpha);
 Ewma windFilter(float(read_interval) / 25000);   // For 2 minute wind average at read_interval of 5s
 Ewma gustFilter(float(read_interval) / 8000);   // For 15 second gusts at read_interval of 5s
 float max_gust = 0;
+const uint8_t wind_irqPin = A0;        // Wind sensor irq pin
+volatile uint16_t  wind_rotation_count = 0;
 
 AK09918 ak09918;
 AK09918_err_type_t err;
@@ -52,7 +52,7 @@ void setup() {
   Serial.println("GSC Barge Wind Sensor");
 
   // override the default CS, reset, and IRQ pins (optional)
-  LoRa.setPins(lora_csPin, lora_resetPin, lora_irqPin);// set CS, reset, IRQ pin
+  LoRa.setPins(lora_csPin, lora_resetPin); // set CS, reset, no IRQ
   LoRa.setSPIFrequency(1E6);
 
   if (!LoRa.begin(906.2E6)) {             // initialize ratio at 915 MHz
@@ -100,7 +100,8 @@ void setup() {
   icm20600.initialize();
 
   // Setup Wind Sensor
-  attachInterrupt(digitalPinToInterrupt(wind_irqPin), wind_rotation_count_irq, CHANGE);
+  pinMode(wind_irqPin, INPUT_PULLUP);
+  PcInt::attachInterrupt(A0, wind_rotation_count_irq, CHANGE);
 }
 
 void wind_rotation_count_irq() {

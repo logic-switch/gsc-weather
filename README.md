@@ -31,6 +31,7 @@ Libraries that need to be downloaded using Library Manager (Tools -> Manage Libr
    * https://github.com/adafruit/Adafruit_Sensor
    * https://github.com/adafruit/Adafruit_BMP183_Unified_Library
 * Grove - IMU 9DOF - https://github.com/Seeed-Studio/Seeed_ICM20600_AK0991
+* PCINT library - https://github.com/paulo-raca/YetAnotherArduinoPcIntLibrary
 
 # Raspberry Pi
 
