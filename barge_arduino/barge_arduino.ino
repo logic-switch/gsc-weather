@@ -18,8 +18,8 @@ const int16_t lora_resetPin = 6;       // LoRa radio reset
 CRC8 crc;
 Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10077);
 
-const int32_t read_interval = 5000;    // interval between reads (ms)
-const int32_t send_interval = 10010;   // interval between sends (ms)
+const int32_t read_interval = 5010;    // interval between reads (ms)
+const int32_t send_interval = read_interval * 6;   // interval between sends (ms)
 // Suggest change to 301681 milliseconds (Just over than 5 minutes. An odd number to reduce the chance of repeated collisions)
 
 uint32_t  lastReadTime = 0;        // last time data was measured
@@ -42,6 +42,7 @@ int32_t offset_y = -26;
 int32_t offset_z = -29;
 
 ICM20600 icm20600(true);
+int32_t x, y, z;
 uint16_t acc_x_max = 0;
 uint16_t acc_y_max = 0;
 uint16_t acc_z_max = 0;
@@ -110,10 +111,12 @@ void setup() {
 
 void onLoRaTxDone() {
   LoRa.sleep();                         // Put radio into lowest power mode
+  lowPowerMode();
 }
 
 void wind_rotation_count_irq() {
   wind_rotation_count += 1;
+  lowPowerMode();
 }
 
 void loop() {
@@ -124,7 +127,6 @@ void loop() {
     readTimeInterval = ULONG_MAX - lastReadTime + currentTime;
   }
 
-  int32_t x, y, z;
   if (readTimeInterval > read_interval) {
     lastReadTime = millis();
 
@@ -202,6 +204,10 @@ void loop() {
     acc_x_max = acc_y_max = acc_z_max = 0;
   }
 
+  lowPowerMode();
+}
+
+void lowPowerMode() {
   LowPower.idle(SLEEP_1S, ADC_OFF,
                 TIMER4_OFF, TIMER3_OFF, TIMER1_OFF, TIMER0_ON,
                 SPI_ON, USART1_OFF, TWI_OFF, USB_OFF);
