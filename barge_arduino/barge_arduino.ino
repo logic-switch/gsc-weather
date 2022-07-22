@@ -7,6 +7,7 @@
 #include <Ewma.h>   // Sensor data smoothing - Exponentially Weighted Moving Average
 #include <limits.h> // For ULONG_MAX
 #include <YetAnotherPcInt.h>  // Easy use of PcInt
+#include "LowPower.h"         // RocketScream low-power for AVR
 
 #include "AK09918.h"
 #include "ICM20600.h"
@@ -201,7 +202,9 @@ void loop() {
     acc_x_max = acc_y_max = acc_z_max = 0;
   }
 
-  delay(250);
+  LowPower.idle(SLEEP_1S, ADC_OFF,
+                TIMER4_OFF, TIMER3_OFF, TIMER1_OFF, TIMER0_ON,
+                SPI_ON, USART1_OFF, TWI_OFF, USB_OFF);
 }
 
 void packUnsignedShort(char* buffer, uint16_t  value) {
