@@ -21,6 +21,9 @@ graph LR;
 
 # Arduino
 
+Add to File->Preferences->Additional Boards Manager URLs:
+https://adafruit.github.io/arduino-board-index/package_adafruit_index.json
+
 ## Wiring
 
 Atmega32u4 - Adafruit Feather 32u4
@@ -28,7 +31,7 @@ Atmega32u4 - Adafruit Feather 32u4
 * Anemometer - 6P4C (RJ11 phone) connector
     1. black - GND
     2. red - 3V
-    3. green - PCINT8 (A0)
+    3. green - PCINT5 (A9)
     4. yellow - unused
 * I2C sensors - VCC, GND, SDA (2), SCL(3)
 
