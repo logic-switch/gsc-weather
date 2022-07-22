@@ -63,6 +63,7 @@ void setup() {
   LoRa.setSpreadingFactor(12); // Larger spreading factors give more range, 6-12
   LoRa.disableCrc();
   LoRa.setTxPower(20); // 2-20
+  LoRa.onTxDone(onLoRaTxDone);
 
   //Serial.println("LoRa init succeeded.");
 
@@ -104,6 +105,10 @@ void setup() {
   pinMode(A9, INPUT_PULLUP);
 
   PcInt::attachInterrupt(A9, wind_rotation_count_irq, CHANGE);
+}
+
+void onLoRaTxDone() {
+  LoRa.sleep();                         // Put radio into lowest power mode
 }
 
 void wind_rotation_count_irq() {
@@ -220,6 +225,8 @@ void sendGSCData(float temperature,
                  uint16_t acc_y,
                  uint16_t acc_z) {
   //Serial.println("sendGSCData");
+  LoRa.idle(); // Wake up the radio before prepping the packet to get it ready to send
+
   int16_t packet_length = 4 + 20 + 1; // header, payload, crc
   char buffer[packet_length];
   memset(buffer, 1, packet_length);
@@ -257,7 +264,7 @@ void sendGSCData(float temperature,
 
   LoRa.beginPacket();                   // start packet
   LoRa.write(buffer, packet_length);    // add payload
-  LoRa.endPacket();                     // finish packet and send it
+  LoRa.endPacket(true);                 // finish packet and send it
 }
 
 void calibrate(uint32_t timeout, int32_t* offsetx, int32_t* offsety, int32_t* offsetz) {
