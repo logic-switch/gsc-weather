@@ -114,7 +114,7 @@ class GSC_Data:
         if len(packet) >= 2:
             self.pressure = (self._convert_value_unsigned(
                 packet.pop(0),
-                packet.pop(0)) + 80000) / 1000
+                packet.pop(0)) + 80000) / 100
 
         self.wind = 0
         if len(packet) >= 2:
@@ -234,7 +234,7 @@ class LoRaData():
             return data
 
         data['outTemp'] = gsc_data.temperature
-        data['barometer'] = gsc_data.pressure
+        data['pressure'] = gsc_data.pressure
 
         data['windSpeed'] = self.convert_wind(gsc_data.wind)
         data['windGust'] = self.convert_wind(gsc_data.gust)
