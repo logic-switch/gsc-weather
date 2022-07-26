@@ -1,5 +1,4 @@
 class GSC_Data:
-
     # Packed data format
     # By using slighty unusual units it is possible to pack a reasonable range
     # of values into a 16 bit field
@@ -7,9 +6,14 @@ class GSC_Data:
     # uint8[3] identification string == GSC (Glenmore Sailing Club)
     # int16 temperature  (centi-degrees celsius,  10^-2 °C)
     # uint16 pressure + 80000 (Pa)
-    # uint16 wind_speed  (mm/s - millimeters per second)
-    # uint16 wind_gust_speed (mm/s - millimeters per second)
-    # uint8 wind_direction * 2 (degrees)
+    # uint16 wind_speed  (rotations per interval)
+    # uint16 wind_gust_speed (rotations per interval)
+    # int16 barge_orientation x
+    # int16 barge_orientation y
+    # int16 barge_orientation z
+    # uint16 barge_acceleration x
+    # uint16 barge_acceleration y
+    # uint16 barge_acceleration z
     # uint8 crc8 (ccitt)
 
     # Returns

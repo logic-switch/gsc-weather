@@ -52,11 +52,7 @@ Libraries that need to be downloaded using Library Manager (Tools -> Manage Libr
 
 ## Wiring
 
-## Ramdisk setup
-```
-pi@raspberrypi:~ $ sudo mkdir /var/ramdisk
-pi@raspberrypi:~ $ echo "tmpfs /var/ramdisk tmpfs nodev,nosuid,size=256k 0 0" | sudo tee -a /etc/fstab
-```
+
 
 ## SPI Setup
 ```
@@ -68,18 +64,29 @@ pi@raspberrypi:~ $ sudo raspi-config
 
 ### Install Python Libraries
 ```
-python3 -m pip install crc
-python3 -m pip install adafruit-circuitpython-rfm9x
+sudo python3 -m pip install crc adafruit-circuitpython-rfm9x
 ```
 
-### Running unit tests
-```
-~/gsc-weather $ cd basestation
-~/gsc-weather/basestation $ python3 -m unittest *
-```
+## WeeWx
+1. Install weewx (see the user guide: http://weewx.com/docs/setup.htm)
+2. Zip the WeeWx-driver directory as GscLoRa.zip
+3. Install the driver
+
+    ```wee_extension --install GscLoRa.zip```
+4. Configure the driver
+
+    ```wee_config --reconfigure```
+
+## Lighttpd
+
+    sudo apt install lighttpd
+
+Add ```alias.url += ( "/weewx" => "/home/weewx/public_html" )```
+to file ```/etc/lighttpd/lighttpd.conf```
 
 # Credit
 
 [Adafruit](https://www.adafruit.com) for great products and tutorials
 
-WeeXx [pi weather station](https://github.com/weewx/weewx/wiki/Raspberry-Pi-weather-station-with-i2C-sensors), [sensors and scripts](https://github.com/weewx/weewx/wiki/i2C-sensor-and-other-python-scripts)
+WeeXx [pi weather station](https://github.com/weewx/weewx/wiki/Raspberry-Pi-weather-station-with-i2C-sensors), [sensors and scripts](https://github.com/weewx/weewx/wiki/i2C-sensor-and-other-python-scripts),
+[WeeWX-BCRobotics](https://github.com/David-Enst/WeeWX-BCRobotics)
