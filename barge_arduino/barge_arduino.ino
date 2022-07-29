@@ -5,7 +5,6 @@
 #include <Adafruit_Sensor.h>    // For the BMP180
 #include <Adafruit_BMP085_U.h>  // For the BMP180
 #include <Ewma.h>   // Sensor data smoothing - Exponentially Weighted Moving Average
-#include <limits.h> // For ULONG_MAX
 #include <YetAnotherPcInt.h>  // Easy use of PcInt
 #include "LowPower.h"         // RocketScream low-power for AVR
 
@@ -50,7 +49,6 @@ uint16_t acc_z_max = 0;
 void setup() {
   //Serial.begin(9600);                   // initialize serial
   //while (!Serial);
-
   //Serial.println("GSC Barge Wind Sensor");
 
   // override the default CS, reset, and IRQ pins (optional)
@@ -121,11 +119,7 @@ void wind_rotation_count_irq() {
 
 void loop() {
   uint32_t  currentTime = millis();
-  uint32_t  readTimeInterval = currentTime - lastReadTime;
-  if (currentTime < lastReadTime) {
-    // Avoid clock overflow
-    readTimeInterval = ULONG_MAX - lastReadTime + currentTime;
-  }
+  uint32_t  readTimeInterval = currentTime - lastReadTime; // Overflow is okay for intervals
 
   if (readTimeInterval > read_interval) {
     lastReadTime = millis();
@@ -147,19 +141,6 @@ void loop() {
     //Serial.print("  RPS  = "); Serial.print(rps); Serial.print("  Wind = "); Serial.print(wind);
     //Serial.print("  Gust = "); Serial.print(gust); Serial.print("  Max = "); Serial.print(max_gust); Serial.println("");
 
-    float rawTemperature;
-    bmp.getTemperature(&rawTemperature);
-    float temperature = temperatureFilter.filter(rawTemperature);
-    //Serial.print("temperature = "); Serial.print(temperature); Serial.print(" raw: "); Serial.print(rawTemperature);  Serial.println(" C");
-
-    float rawPressure;
-    bmp.getPressure(&rawPressure);
-    float pressure = pressureFilter.filter(rawPressure);
-    //Serial.print("pressure = "); Serial.print(pressure); Serial.print(" raw: "); Serial.print(rawPressure);  Serial.println(" Pa");
-
-    //Serial.print("pressure = "); Serial.print(pressureFilter.output); Serial.println(" Pa");
-    //Serial.print("temperature = "); Serial.print(temperatureFilter.output); Serial.println(" C");
-
     ak09918.getData(&x, &y, &z);
     x = x - offset_x;
     y = y - offset_y;
@@ -177,13 +158,25 @@ void loop() {
 
     //Serial.print("A:  "); Serial.print(acc_x_max); Serial.print(",  ");
     //Serial.print(acc_y_max); Serial.print(",  "); Serial.print(acc_z_max); Serial.println(" mg");
+
+    delay(100); // Wait for the BMP180 to fully wake up
+    float rawTemperature;
+    bmp.getTemperature(&rawTemperature);
+    if (rawTemperature < 80) {
+      temperatureFilter.filter(rawTemperature);
+    }
+    //Serial.print("temperature = "); Serial.print(temperatureFilter.output); Serial.print(" raw: "); Serial.print(rawTemperature);  Serial.println(" C");
+
+    float rawPressure;
+    bmp.getPressure(&rawPressure);
+    float pressure = pressureFilter.filter(rawPressure);
+    //Serial.print("pressure = "); Serial.print(pressure); Serial.print(" raw: "); Serial.print(rawPressure);  Serial.println(" Pa");
+
+    //Serial.print("pressure = "); Serial.print(pressureFilter.output); Serial.println(" Pa");
+    //Serial.print("temperature = "); Serial.print(temperatureFilter.output); Serial.println(" C");
   }
 
-  uint32_t  sendTimeInterval = currentTime - lastSendTime;
-  if (currentTime < lastSendTime) {
-    // Avoid clock overflow
-    sendTimeInterval = ULONG_MAX - lastSendTime + currentTime;
-  }
+  uint32_t  sendTimeInterval = currentTime - lastSendTime;  // Overflow is okay for intervals
   if (sendTimeInterval > send_interval) {
     lastSendTime = millis();
 
