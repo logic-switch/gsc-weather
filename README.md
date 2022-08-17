@@ -34,6 +34,7 @@ Atmega32u4 - Adafruit Feather 32u4
     3. green - PCINT5 (A9)
     4. yellow - unused
 * I2C sensors - VCC, GND, SDA (2), SCL(3)
+* Voltage divider - A1
 
 ## Libraries
 

@@ -202,7 +202,7 @@ class LoRaData():
 
     @staticmethod
     def calculate_voltage(adc_reading):
-        voltage = 18.5 * adc_reading / 1024
+        voltage = 17.6 * adc_reading / 1024
         return voltage
 
     def get_readings(self):
@@ -239,14 +239,16 @@ class LoRaData():
 
         data['windSpeed'] = self.convert_wind(gsc_data.wind)
         data['windGust']  = self.convert_wind(gsc_data.gust)
-        if data['windGust'] < 1.1 * data['windSpeed']:
+        if data['windGust'] < 1.1 * data['windSpeed'] or data['windGust'] < 1 + data['windSpeed']:
             # Gusts must be 10% greater than average speed to count
+            # and at least 1 km/h greater
             data['windGust'] = data['windSpeed']
 
         # Wind direction calculation
         # data['windDir'] = ??
 
-        data['rms'] = self.calculate_chop(gsc_data.acc_z)
+        # Windy driver doesn't like something with km_per_hour2
+        # data['rms'] = self.calculate_chop(gsc_data.acc_z)
 
         data['supplyVoltage'] = self.calculate_voltage(gsc_data.battery)
         # print(f'{gsc_data}, {self.rfm9x.last_rssi}, {self.rfm9x.last_snr}')
