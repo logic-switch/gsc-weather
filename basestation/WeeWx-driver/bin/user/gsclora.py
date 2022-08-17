@@ -82,10 +82,8 @@ class GSC_Data:
     # uint16 wind_gust_speed (rotations per interval)
     # int16 barge_orientation x
     # int16 barge_orientation y
-    # int16 barge_orientation z
-    # uint16 barge_acceleration x
-    # uint16 barge_acceleration y
     # uint16 barge_acceleration z
+    # int16 barge battery ADC reading
     # uint8 crc8 (ccitt)
 
     # Returns
@@ -133,16 +131,14 @@ class GSC_Data:
             self.x = (self._convert_value(packet.pop(0), packet.pop(0)))
         if len(packet) >= 2:
             self.y = (self._convert_value(packet.pop(0), packet.pop(0)))
-        if len(packet) >= 2:
-            self.z = (self._convert_value(packet.pop(0), packet.pop(0)))
 
         # Acceleration data
         if len(packet) >= 2:
-            self.acc_x = (self._convert_value_unsigned(packet.pop(0), packet.pop(0)))
-        if len(packet) >= 2:
-            self.acc_y = (self._convert_value_unsigned(packet.pop(0), packet.pop(0)))
-        if len(packet) >= 2:
             self.acc_z = (self._convert_value_unsigned(packet.pop(0), packet.pop(0)))
+
+        # Battery data
+        if len(packet) >= 2:
+            self.battery = (self._convert_value(packet.pop(0), packet.pop(0)))
 
     def __repr__(self):
         return str(self.__dict__)
@@ -195,14 +191,19 @@ class LoRaData():
 
     @staticmethod
     def convert_wind(rotations):
-        wind_speed = rotations / 100
+        WIND_SPEED_MULTIPLIER = 1.50 # Turn rotations per period into km/h
+        wind_speed = WIND_SPEED_MULTIPLIER * rotations
         return wind_speed
 
     @staticmethod
-    def calculate_chop(x, y, z):
-        # TODO - Get rid of gravitational acceleration before magnitude
-        magnitude = (x**2 + y**2 + z**2) ** 0.5 - 1000 # sqrt( squares summed )
+    def calculate_chop(z):
+        magnitude = z - 1000 # sqrt( squares summed )
         return magnitude
+
+    @staticmethod
+    def calculate_voltage(adc_reading):
+        voltage = 18.5 * adc_reading / 1024
+        return voltage
 
     def get_readings(self):
         packet = None
@@ -237,13 +238,19 @@ class LoRaData():
         data['pressure'] = gsc_data.pressure
 
         data['windSpeed'] = self.convert_wind(gsc_data.wind)
-        data['windGust'] = self.convert_wind(gsc_data.gust)
+        data['windGust']  = self.convert_wind(gsc_data.gust)
         if data['windGust'] < 1.1 * data['windSpeed']:
             # Gusts must be 10% greater than average speed to count
             data['windGust'] = data['windSpeed']
 
-        data['rms'] = self.calculate_chop(gsc_data.acc_x, gsc_data.acc_y, gsc_data.acc_z)
+        # Wind direction calculation
+        # data['windDir'] = ??
+
+        data['rms'] = self.calculate_chop(gsc_data.acc_z)
+
+        data['supplyVoltage'] = self.calculate_voltage(gsc_data.battery)
         # print(f'{gsc_data}, {self.rfm9x.last_rssi}, {self.rfm9x.last_snr}')
+
         return data
 
 if __name__ == "__main__":

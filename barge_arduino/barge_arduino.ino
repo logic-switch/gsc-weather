@@ -46,6 +46,9 @@ uint16_t acc_x_max = 0;
 uint16_t acc_y_max = 0;
 uint16_t acc_z_max = 0;
 
+int16_t battery_level = 0;
+
+
 void setup() {
   //Serial.begin(9600);                   // initialize serial
   //while (!Serial);
@@ -118,8 +121,8 @@ void wind_rotation_count_irq() {
 }
 
 void loop() {
-  uint32_t  currentTime = millis();
-  uint32_t  readTimeInterval = currentTime - lastReadTime; // Overflow is okay for intervals
+  uint32_t currentTime = millis();
+  uint32_t readTimeInterval = currentTime - lastReadTime; // Overflow is okay for intervals
 
   if (readTimeInterval > read_interval) {
     lastReadTime = millis();
@@ -174,6 +177,9 @@ void loop() {
 
     //Serial.print("pressure = "); Serial.print(pressureFilter.output); Serial.println(" Pa");
     //Serial.print("temperature = "); Serial.print(temperatureFilter.output); Serial.println(" C");
+
+    // Battery sensor
+    battery_level = analogRead(A1);  // read the battery voltage divider
   }
 
   uint32_t  sendTimeInterval = currentTime - lastSendTime;  // Overflow is okay for intervals
@@ -187,10 +193,8 @@ void loop() {
         max_gust,
         (int16_t)x,
         (int16_t)y,
-        (int16_t)z,
-        acc_x_max,
-        acc_y_max,
-        acc_z_max);
+        acc_z_max,
+        battery_level);
     digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
 
     max_gust = 0;
@@ -201,7 +205,7 @@ void loop() {
 }
 
 void lowPowerMode() {
-  LowPower.idle(SLEEP_1S, ADC_OFF,
+  LowPower.idle(SLEEP_1S, ADC_ON,
                 TIMER4_OFF, TIMER3_OFF, TIMER1_OFF, TIMER0_ON,
                 SPI_ON, USART1_OFF, TWI_OFF, USB_OFF);
 }
@@ -222,10 +226,8 @@ void sendGSCData(float temperature,
                  float gust,
                  int16_t x,
                  int16_t y,
-                 int16_t z,
-                 uint16_t acc_x,
-                 uint16_t acc_y,
-                 uint16_t acc_z) {
+                 uint16_t acc_z,
+                 int16_t battery) {
   //Serial.println("sendGSCData");
   LoRa.idle(); // Wake up the radio before prepping the packet to get it ready to send
 
@@ -255,10 +257,8 @@ void sendGSCData(float temperature,
   //Serial.print("Compass X = "); Serial.print(x); Serial.println(" ");
   packSignedShort(&buffer[12], x);
   packSignedShort(&buffer[14], y);
-  packSignedShort(&buffer[16], z);
-  packUnsignedShort(&buffer[18], acc_x);
-  packUnsignedShort(&buffer[20], acc_y);
-  packUnsignedShort(&buffer[22], acc_z);
+  packUnsignedShort(&buffer[16], acc_z);
+  packSignedShort(&buffer[18], battery);
 
   crc.restart();
   crc.add(buffer, packet_length-1);
