@@ -78,6 +78,10 @@ sudo python3 -m pip install crc adafruit-circuitpython-rfm9x
 
     ```wee_config --reconfigure```
 
+### Windy driver
+
+https://github.com/matthewwall/weewx-windy
+
 ## Lighttpd
 
     sudo apt install lighttpd

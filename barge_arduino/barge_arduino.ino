@@ -27,8 +27,8 @@ uint32_t  lastSendTime = 0;        // last time data was sent
 const float filterAlpha = 0.05;     // Smaller is more smoothing
 Ewma pressureFilter(filterAlpha);
 Ewma temperatureFilter(filterAlpha);
-Ewma windFilter(float(read_interval) / 25000);   // For 2 minute wind average at read_interval of 5s
-Ewma gustFilter(float(read_interval) / 8000);   // For 15 second gusts at read_interval of 5s
+Ewma windFilter(float(read_interval) / 20000);   // For 2 minute wind average at read_interval of 5s
+Ewma gustFilter(float(read_interval) / 12000);   // For 15 second gusts at read_interval of 5s
 float max_gust = 0;
 const uint8_t wind_irqPin = A9;        // Wind sensor irq pin (d9 - adc12 - a9 - pcint5)
 volatile uint16_t  wind_rotation_count = 0;
@@ -45,9 +45,6 @@ int32_t x, y, z;
 uint16_t acc_x_max = 0;
 uint16_t acc_y_max = 0;
 uint16_t acc_z_max = 0;
-
-int16_t battery_level = 0;
-
 
 void setup() {
   //Serial.begin(9600);                   // initialize serial
@@ -86,6 +83,7 @@ void setup() {
     //Serial.print("BMP180 not detected ... Check your wiring or I2C address!");
     while(1);
   }
+  //Serial.println("BMP180 init succeeded.");
 
   // Setup Compass
   err = ak09918.initialize();
@@ -97,11 +95,13 @@ void setup() {
       delay(100);
       err = ak09918.isDataReady();
   }
+  //Serial.println("icm20600 init succeeded.");
   // Calibrated at lab bench. May need to be revisited.
   //calibrate(30000, &offset_x, &offset_y, &offset_z);
 
   // Setup accelerometer and gyro
   icm20600.initialize();
+  //Serial.println("icm20600 init succeeded.");
 
   // Setup Wind Sensor
   pinMode(A0, INPUT); // Messed up the wiring
@@ -165,27 +165,32 @@ void loop() {
     delay(100); // Wait for the BMP180 to fully wake up
     float rawTemperature;
     bmp.getTemperature(&rawTemperature);
-    if (rawTemperature < 80) {
+    if (temperatureFilter.output == 0 || abs(temperatureFilter.output - rawTemperature) < 10) {
+      // Ignore if the temperature change was more than 10 degrees C
+      // The chip or library gives spurious readings occationally
       temperatureFilter.filter(rawTemperature);
     }
     //Serial.print("temperature = "); Serial.print(temperatureFilter.output); Serial.print(" raw: "); Serial.print(rawTemperature);  Serial.println(" C");
 
     float rawPressure;
     bmp.getPressure(&rawPressure);
-    float pressure = pressureFilter.filter(rawPressure);
+    if (pressureFilter.output == 0 || abs(pressureFilter.output - rawPressure) < 4) {
+      // Ignore if the pressure change was more than 4mbar (equivalent to 30m altitude change)
+      // The chip or library gives spurious readings occationally
+      float pressure = pressureFilter.filter(rawPressure);
+    }
     //Serial.print("pressure = "); Serial.print(pressure); Serial.print(" raw: "); Serial.print(rawPressure);  Serial.println(" Pa");
 
     //Serial.print("pressure = "); Serial.print(pressureFilter.output); Serial.println(" Pa");
     //Serial.print("temperature = "); Serial.print(temperatureFilter.output); Serial.println(" C");
-
-    // Battery sensor
-    battery_level = analogRead(A1);  // read the battery voltage divider
   }
 
   uint32_t  sendTimeInterval = currentTime - lastSendTime;  // Overflow is okay for intervals
   if (sendTimeInterval > send_interval) {
     lastSendTime = millis();
 
+    // Battery sensor
+    int16_t battery_level = analogRead(A1);  // read the battery voltage divider
     digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
     sendGSCData(temperatureFilter.output,
         pressureFilter.output,
