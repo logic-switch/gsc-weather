@@ -13,6 +13,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 import time
 import logging
+import math
 
 import weewx.drivers
 import weeutil.weeutil
@@ -196,6 +197,22 @@ class LoRaData():
         return wind_speed
 
     @staticmethod
+    def convert_wind_dir(x, y):
+        offset_angle = -25 # To rotate sensor to match barge orientation
+        offset_x = -10 # To center to magnetometer x and y
+        offset_y = 10
+
+        new_x = x-offset_x
+        new_y = y-offset_y
+        angle_rad = math.atan2(new_x, new_y)
+        angle = round(angle_rad * 180 / math.pi) - offset_angle
+        if (angle < 0):
+            angle += 360
+        elif (angle > 360):
+            angle -= 360
+        return angle
+
+    @staticmethod
     def calculate_chop(z):
         magnitude = z - 1000 # sqrt( squares summed )
         return magnitude
@@ -245,7 +262,8 @@ class LoRaData():
             data['windGust'] = data['windSpeed']
 
         # Wind direction calculation
-        # data['windDir'] = ??
+        data['windDir'] = self.convert_wind_dir(gsc_data.x, gsc_data.y)
+        # print(f'x,{gsc_data.x},y,{gsc_data.y},a,{angle}')
 
         # Windy driver doesn't like something with km_per_hour2
         # data['rms'] = self.calculate_chop(gsc_data.acc_z)
